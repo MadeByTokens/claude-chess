@@ -2,7 +2,7 @@
 
 **An experiment in multi-agent architecture, not a chess engine.**
 
-This is a Claude Code plugin exploring how multiple AI agents can collaborate through structured deliberation and information isolation. It happens to play chess, but don't expect it to beat your grandmother - the goal is to study agent coordination patterns, not to win tournaments.
+A Claude Code plugin exploring multi-agent collaboration through deliberation and information isolation. It happens to play chess, but don't expect it to beat your grandmother - the goal is studying agent coordination, not winning tournaments.
 
 The architecture is the point: three agents with different roles, communicating only through files, each blind to the others' internal reasoning. Whether the moves are any good is secondary to whether the collaboration patterns are interesting.
 
@@ -10,27 +10,44 @@ The architecture is the point: three agents with different roles, communicating 
 
 Three agents run via the Task tool, communicating only through files:
 
-```
-                    ORCHESTRATOR (/chess:play)
-                           │
-         ┌─────────────────┼─────────────────┐
-         │                 │                 │
-         ▼                 ▼                 ▼
-    ┌─────────┐      ┌───────────┐      ┌─────────┐
-    │STRATEGIST│      │DEVIL'S ADV│      │ ARBITER │
-    │  (Task)  │      │  (Task)   │      │ (Task)  │
-    └─────────┘      └───────────┘      └─────────┘
-         │                 │                 │
-    Reads:            Reads:            Reads:
-    - state/game.json - state/game.json - state/game.json
-    - state/memory.md - candidates.json - candidates.json
-                        (moves only!)   - refutations.json
-         │                 │                 │
-    Writes:           Writes:           Writes + Executes:
-    - candidates.json - refutations.json - decision.json
-                                         - chess_move()
-                                         - chess_log_turn()
-                                         - chess_remember()
+```mermaid
+flowchart TB
+    subgraph Orchestrator["/chess:play"]
+        direction LR
+        O[Orchestrator]
+    end
+
+    subgraph Agents
+        S[Strategist<br/>Task]
+        D[Devil's Advocate<br/>Task]
+        A[Arbiter<br/>Task]
+    end
+
+    subgraph Files
+        G[state/game.json]
+        M[state/memory.md]
+        C[candidates.json]
+        R[refutations.json]
+        Dec[decision.json]
+    end
+
+    subgraph MCP[MCP Tools]
+        Move[chess_move]
+        Log[chess_log_turn]
+        Rem[chess_remember]
+    end
+
+    O --> S & D & A
+
+    G --> S & D & A
+    M --> S
+    S --> C
+    C -->|moves only| D
+    D --> R
+    C --> A
+    R --> A
+    A --> Dec
+    A --> Move & Log & Rem
 ```
 
 Each agent spawns as a separate Task with its own context. They cannot access each other's internal reasoning - only the files they're allowed to read.
@@ -57,6 +74,15 @@ brew install stockfish
 ```
 
 Verify setup by running `/chess:help` which will call the `chess_verify()` MCP tool.
+
+## Running the Plugin
+
+To use without installing globally:
+```bash
+claude --plugin-dir /path/to/claude-chess
+```
+
+Or add to your Claude Code settings for permanent access.
 
 ## Usage
 
@@ -193,8 +219,6 @@ Architecture based on [bon-cop-bad-cop](https://github.com/MadeByTokens/bon-cop-
 
 ## Plugin Development Notes
 
-Notes on building Claude Code plugins with MCP servers.
-
 ### MCP Server Integration
 
 **Configuration (`.mcp.json`):**
@@ -210,7 +234,6 @@ Notes on building Claude Code plugins with MCP servers.
 }
 ```
 
-Key points:
 - Use `${CLAUDE_PLUGIN_ROOT}` to reference files within the plugin directory
 - Do NOT set `cwd` if you want state files created in the user's working directory
 - The MCP server script should use relative paths (`Path("state")`) for user-specific data

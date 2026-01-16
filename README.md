@@ -1,3 +1,5 @@
+<img width="1024" height="506" alt="image" src="https://github.com/user-attachments/assets/a665eac4-06f0-4e0e-aadb-c5d455d9c2cd" />
+
 # Claude Chess
 
 **An experiment in multi-agent architecture, not a chess engine.**
